@@ -13,53 +13,80 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 public class PrincipalConBusqueda {
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) {
         Scanner lectura = new Scanner(System.in);
-        System.out.println("Escriba el nombre de una película o serie para buscar:");
-        var busqueda = lectura.nextLine();
+        List<Titulo> titulos = new ArrayList<>();
+        Gson gson = new GsonBuilder()
+                .setFieldNamingPolicy(FieldNamingPolicy.UPPER_CAMEL_CASE)
+                .setPrettyPrinting()
+                .create();
 
-        String clave = "Method…";
-        String direccion = "https://www.omdbapi.com/?t=" +
-                busqueda.replace(" ", "+") +
-                "&apikey=dd55f67c";
+        while (true) {
+            System.out.println("Escriba el nombre de una película o serie para buscar:");
+            var busqueda = lectura.nextLine();
 
-        try {
+            if (busqueda.equalsIgnoreCase("salir")) {
+                System.out.println("Saliendo del programa...");
+                break;
+            }
 
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(direccion))
-                    .build();
-            HttpResponse<String> response = client
-                    .send(request, HttpResponse.BodyHandlers.ofString());
+            String direccion = "https://www.omdbapi.com/?t=" +
+                    busqueda.replace(" ", "+") +
+                    "&apikey=dd55f67c";  // Asegúrate de que tu API key sea válida
 
-            String json = response.body();
-            System.out.println(json);
+            try {
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(direccion))
+                        .build();
+                HttpResponse<String> response = client
+                        .send(request, HttpResponse.BodyHandlers.ofString());
 
-            Gson gson = new GsonBuilder()
-                    .setFieldNamingPolicy(FieldNamingPolicy.UPPER_CAMEL_CASE)
-                    .create();
-            TituloOmdb miTituloOmdb = gson.fromJson(json, TituloOmdb.class);
-            System.out.println(miTituloOmdb);
+                String json = response.body();
+                System.out.println(json);
 
-            Titulo miTitulo = new Titulo(miTituloOmdb);
-            System.out.println( "Titulo ya convertido: " + miTitulo);
+                TituloOmdb miTituloOmdb = gson.fromJson(json, TituloOmdb.class);
+                System.out.println(miTituloOmdb);
 
-            FileWriter escritura = new FileWriter("pelicula.txt");
-            escritura.write(miTitulo.toString());
-            escritura.close();
+                Titulo miTitulo = new Titulo(miTituloOmdb);
+                System.out.println("Título ya convertido: " + miTitulo);
 
-        }catch (NumberFormatException e) {
-            System.out.println("Ocurrio un error: ");
-            System.out.println(e.getMessage());
+                titulos.add(miTitulo);
 
-        }catch (IllegalArgumentException e) {
-            System.out.println("Error en la URI, verifique la direccion. ");
-        } catch (ErrorEnConversionDeDuracionException e) {
-            System.out.println(e.getMessage());;
+            } catch (NumberFormatException e) {
+                System.out.println("Ocurrió un error: ");
+                System.out.println(e.getMessage());
+            } catch (IllegalArgumentException e) {
+                System.out.println("Error en la URI, verifique la dirección: ");
+                System.out.println(e.getMessage());
+            } catch (ErrorEnConversionDeDuracionException e) {
+                System.out.println("Error de conversión: " + e.getMessage());
+            } catch (Exception e) {
+                System.out.println("Ocurrió un error inesperado: " + e.getMessage());
+                e.printStackTrace();
+            }
         }
+
+        // Mostrar todos los títulos agregados
+        System.out.println(titulos);
+
+        // ✅ Escritura del archivo JSON (ahora con manejo de errores)
+        try {
+            FileWriter escritura = new FileWriter("titulos.json");
+            escritura.write(gson.toJson(titulos));
+            escritura.close();
+            System.out.println("Archivo 'titulos.json' guardado exitosamente en: " + System.getProperty("user.dir"));
+        } catch (IOException e) {
+            System.out.println("No se pudo guardar el archivo 'titulos.json'. Verifica permisos o ruta.");
+            System.out.println("Error: " + e.getMessage());
+            e.printStackTrace();
+        }
+
         System.out.println("Finalizado el proceso de búsqueda.");
     }
 }
